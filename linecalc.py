@@ -1,0 +1,242 @@
+#!/usr/bin/env python3
+
+import sys
+import re
+from icecream import ic
+
+
+if len(sys.argv) > 2 and sys.argv[1] == '-d':
+    ic.enable()
+    del sys.argv[1]
+else:
+    ic.disable()
+
+a = []
+for i in range(1, len(sys.argv)):
+    ic(f"{i}: {sys.argv[i]}")
+    a.append(sys.argv[i])
+
+if len(a) == 0:
+    a.append(sys.stdin.readline().strip())
+
+ic(f"Array: '{a}'")
+line = " ".join(a)
+ic(f"Line: '{line}'")
+
+
+def conv(unit):
+    unit = unit.strip().lower()
+    if unit == "czk":
+        return 1.0
+    elif unit == "usd":
+        return 21.0
+    elif unit == "eur":
+        return 24.5
+    else:
+        return None
+
+
+OP_PRIO = {
+    "+": 1,
+    "-": 1,
+    "*": 2,
+    "/": 2,
+    "^": 3,
+}
+
+
+def is_op(op):
+    return op in OP_PRIO.keys()
+
+
+def op_eval(val, op, other):
+    if op == "+":
+        return val + other
+    elif op == "-":
+        return val - other
+    elif op == "*":
+        return val * other
+    elif op == "/":
+        return val / other
+    elif op == "^":
+        return pow(val, other)
+    else:
+        assert False
+
+
+def stack_eval_lr(stack, start, end, ops):
+    fst = None
+    op, opi = None, -1
+    snd, sndi = None, -1
+    for i in range(start, end):
+        if stack[i] is not None:
+            if fst is None:
+                fst = stack[i]
+                fsti = i
+            elif op is None:
+                op = stack[i]
+                opi = i
+            elif snd is None:
+                snd = stack[i]
+                sndi = i
+                if op in ops:
+                    val = op_eval(fst, op, snd)
+                    stack[fsti] = None
+                    stack[opi] = None
+                    stack[sndi] = val
+                    fst, fsti = val, sndi
+                    op, snd = None, None
+                else:
+                    fst, fsti = snd, sndi
+                    op, snd = None, None
+
+
+def stack_eval_rl(stack, start, end, ops):
+    fst = None
+    op, opi = None, -1
+    snd, sndi = None, -1
+    for i in range(end - 1, start - 1, -1):
+        if stack[i] is not None:
+            if snd is None:
+                snd = stack[i]
+                sndi = i
+            elif op is None:
+                op = stack[i]
+                opi = i
+            elif fst is None:
+                fst = stack[i]
+                fsti = i
+                if op in ops:
+                    val = op_eval(fst, op, snd)
+                    stack[sndi] = None
+                    stack[opi] = None
+                    stack[fsti] = val
+                    snd, sndi = val, fsti
+                    op, fst = None, None
+                else:
+                    snd, sndi = fst, fsti
+                    op, snd = None, None
+
+
+def stack_eval_range(stack, start, end):
+    ic("stack_eval_range", stack, start, end)
+    for ops in "^":
+        stack_eval_rl(stack, start, end, ops)
+    for ops in ("*/", "+-"):
+        stack_eval_lr(stack, start, end, ops)
+    ic("stack_eval_range END", stack)
+
+
+def f_conv(stack, m):
+    ic("f_conv", m.group())
+    i = stack_rindex_notnone(stack)
+    val = stack[i]
+    unit = m.group()
+    stack[i] = val * conv(unit)
+
+
+def f_space(stack, _):
+    pass
+
+
+def f_op(stack, m):
+    op = m.group()
+    if op == 'x':
+        op = '*'
+    # interpret(stack, op)
+    stack.append(op)
+
+
+def f_num(stack, m):
+    stack.append(float(m.group()))
+
+
+def f_left_par(stack, m):
+    stack.append(m.group())
+
+
+def stack_rindex(stack, item):
+    result = None
+    for i in range(len(stack) - 1, -1, -1):
+        if stack[i] == item:
+            result = i
+            break
+    return result
+
+
+def stack_rindex_notnone(stack):
+    result = None
+    for i in range(len(stack) - 1, -1, -1):
+        if stack[i] is not None:
+            result = i
+            break
+    return result
+
+
+def f_right_par(stack, m):
+    lefti = stack_rindex(stack, "(")
+    stack_eval_range(stack, lefti + 1, len(stack))
+    stack[lefti] = None
+
+
+class FinalUnit:
+    def __init__(self, val):
+        self.val = val
+
+    def __repr__(self):
+        return f"FinalUnit({self.val:.2f})"
+
+
+def f_final_unit(stack, m):
+    ic(m.group())
+    unit = m.group(1)
+    stack.append(FinalUnit(conv(unit)))
+    if False:
+        stack_eval_range(stack, 0, len(stack))
+        i = stack_rindex_notnone(stack)
+        val = stack[i]
+        stack[i] = val / conv(unit)
+
+
+RE_TOKENS = [
+    # 'x' can be used instead of '*'
+    ("re_op", f_op, re.compile(r"[\+\-\*/^]|(x(?![a-zA-Z]))")),
+    # whole line can be ended with a unit for final conversion - 'to usd'
+    ("re_final_unit", f_final_unit, re.compile(r"to\s+([a-zA-Z]+)")),
+    ("re_conv", f_conv, re.compile(r"([a-zA-Z]+)")),
+    ("re_space", f_space, re.compile(r" +")),
+    ("re_num", f_num, re.compile(r"[0-9]+")),
+    ("re_left_par", f_left_par, re.compile(r"\(")),
+    ("re_right_par", f_right_par, re.compile(r"\)")),
+]
+index = 0
+stack = []
+while True:
+    m = None
+    for name, fun, r in RE_TOKENS:
+        m = r.match(line[index:])
+        if m:
+            ic("token", name, m.group())
+            ic(fun(stack, m))
+            break
+    if not m:
+        break
+    index += m.end()
+
+ic("stack before final processing:", stack)
+final_unit = 1.0
+last_item = stack[len(stack) - 1]
+if isinstance(last_item, FinalUnit):
+    final_unit = last_item.val
+    del stack[len(stack) - 1]
+
+stack_eval_range(stack, 0, len(stack))
+ic("final stack:", stack)
+
+vals = list(filter(lambda x: x is not None, stack))
+assert len(vals) == 1
+ic("filtered stack", vals)
+val = vals[0] / final_unit
+
+# final number - TADAAA
+print(f"{val:.2f}")
