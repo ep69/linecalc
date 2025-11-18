@@ -14,14 +14,14 @@ CONVERT_DATA = None
 
 def _convert_fetch_data():
     global CONVERT_DATA
-    url = 'https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json'
+    url = "https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json"
     r = requests.get(url)
     r.raise_for_status()
-    CONVERT_DATA = r.json()['usd']
+    CONVERT_DATA = r.json()["usd"]
 
 
-def convert(base='usd', quote='czk'):
-    ic('convert', base, quote)
+def convert(base="usd", quote="czk"):
+    ic("convert", base, quote)
     if CONVERT_DATA is None:
         _convert_fetch_data()
     # ic(data)
@@ -36,15 +36,15 @@ def is_op(op):
 
 
 def op_eval(val, op, other):
-    if op == '+':
+    if op == "+":
         return val + other
-    elif op == '-':
+    elif op == "-":
         return val - other
-    elif op == '*':
+    elif op == "*":
         return val * other
-    elif op == '/':
+    elif op == "/":
         return val / other
-    elif op == '^':
+    elif op == "^":
         return pow(val, other)
     else:
         assert False
@@ -105,16 +105,16 @@ def stack_eval_rl(stack, start, end, ops):
 
 
 def stack_eval_range(stack, start, end):
-    ic('stack_eval_range', stack, start, end)
-    for ops in '^':
+    ic("stack_eval_range", stack, start, end)
+    for ops in "^":
         stack_eval_rl(stack, start, end, ops)
-    for ops in ('*/', '+-'):
+    for ops in ("*/", "+-"):
         stack_eval_lr(stack, start, end, ops)
-    ic('stack_eval_range END', stack)
+    ic("stack_eval_range END", stack)
 
 
 def f_conv(stack, m):
-    ic('f_conv', m.group())
+    ic("f_conv", m.group())
     i = stack_rindex_notnone(stack)
     val = stack[i]
     unit = m.group()
@@ -127,8 +127,8 @@ def f_space(stack, _):
 
 def f_op(stack, m):
     op = m.group()
-    if op == 'x':
-        op = '*'
+    if op == "x":
+        op = "*"
     # interpret(stack, op)
     stack.append(op)
 
@@ -160,7 +160,7 @@ def stack_rindex_notnone(stack):
 
 
 def f_right_par(stack, m):
-    lefti = stack_rindex(stack, '(')
+    lefti = stack_rindex(stack, "(")
     stack_eval_range(stack, lefti + 1, len(stack))
     stack[lefti] = None
 
@@ -170,7 +170,7 @@ class FinalUnit:
         self.val = val
 
     def __repr__(self):
-        return f'FinalUnit({self.val:.2f})'
+        return f"FinalUnit({self.val:.2f})"
 
 
 def f_final_unit(stack, m):
@@ -185,23 +185,23 @@ def f_final_unit(stack, m):
 
 RE_TOKENS = [
     # 'x' can be used instead of '*'
-    ('re_op', f_op, re.compile(r'[\+\-\*/^]|(x(?![a-zA-Z]))')),
+    ("re_op", f_op, re.compile(r"[\+\-\*/^]|(x(?![a-zA-Z]))")),
     # whole line can be ended with a unit for final conversion - 'to usd'
-    ('re_final_unit', f_final_unit, re.compile(r'to\s+([a-zA-Z]+)\s*')),
-    ('re_conv', f_conv, re.compile(r'([a-zA-Z]+)')),
-    ('re_space', f_space, re.compile(r' +')),
-    ('re_num', f_num, re.compile(r'[0-9]+(\.[0-9]+)?')),
-    ('re_left_par', f_left_par, re.compile(r'\(')),
-    ('re_right_par', f_right_par, re.compile(r'\)')),
+    ("re_final_unit", f_final_unit, re.compile(r"to\s+([a-zA-Z]+)\s*")),
+    ("re_conv", f_conv, re.compile(r"([a-zA-Z]+)")),
+    ("re_space", f_space, re.compile(r" +")),
+    ("re_num", f_num, re.compile(r"[0-9]+(\.[0-9]+)?")),
+    ("re_left_par", f_left_par, re.compile(r"\(")),
+    ("re_right_par", f_right_par, re.compile(r"\)")),
 ]
 
 
 OP_PRIO = {
-    '+': 1,
-    '-': 1,
-    '*': 2,
-    '/': 2,
-    '^': 3,
+    "+": 1,
+    "-": 1,
+    "*": 2,
+    "/": 2,
+    "^": 3,
 }
 
 
@@ -214,7 +214,7 @@ def handle_line(line):
         for name, fun, r in RE_TOKENS:
             m = r.match(line[index:])
             if m:
-                ic('token', name, m.group())
+                ic("token", name, m.group())
                 fun(stack, m)
                 break
         ic(m)
@@ -224,7 +224,7 @@ def handle_line(line):
     if len(line[index:]) > 0:
         print(f'Warning: part of line not parsed: "{line[index:]}"')
 
-    ic('stack before final processing:', stack)
+    ic("stack before final processing:", stack)
     final_unit = 1.0
     last_item = stack[len(stack) - 1]
     if isinstance(last_item, FinalUnit):
@@ -232,46 +232,46 @@ def handle_line(line):
         del stack[len(stack) - 1]
 
     stack_eval_range(stack, 0, len(stack))
-    ic('final stack:', stack)
+    ic("final stack:", stack)
 
     vals = list(filter(lambda x: x is not None, stack))
     assert len(vals) == 1
-    ic('filtered stack', vals)
+    ic("filtered stack", vals)
     val = vals[0] / final_unit
 
     return val
 
 
 def main():
-    if len(sys.argv) > 2 and sys.argv[1] == '-d':
+    if len(sys.argv) > 2 and sys.argv[1] == "-d":
         ic.enable()
         del sys.argv[1]
 
-    if os.environ.get('DEBUG', False):
+    if os.environ.get("DEBUG", False):
         ic.enable()
 
     a = []
     for i in range(1, len(sys.argv)):
-        ic(f'{i}: {sys.argv[i]}')
+        ic(f"{i}: {sys.argv[i]}")
         a.append(sys.argv[i])
     ic(a)
-    line = ' '.join(a)
+    line = " ".join(a)
     ic(line)
 
     if line:  # specified as arguments
         val = handle_line(line)
         # final number - TADAAA
-        print(f'{val:.2f}')
+        print(f"{val:.2f}")
     else:  # read indefinitely from stdin
         while True:
             line = sys.stdin.readline().strip()
             ic(line)
             if line:
                 val = handle_line(line)
-                print(f'{val:.2f}')
+                print(f"{val:.2f}")
             else:
                 break
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
