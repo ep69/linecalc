@@ -1,31 +1,9 @@
 import pytest
-import sys
 import io
 
-from .data import DATA_POSITIVE
+from .shared import DATA_POSITIVE, DATA_NEGATIVE
 
-import linecalc
 from linecalc import main
-
-
-@pytest.fixture
-def mock_convert(monkeypatch):
-    def fake_convert(base, quote="czk"):
-        if base == "usd" and quote == "czk":
-            return 20.5
-        elif base == "eur" and quote == "czk":
-            return 24.5
-        elif base == "czk" and quote == "czk":
-            return 1.0
-        elif base == "pln" and quote == "czk":
-            return 5.7
-        elif base == "btc" and quote == "czk":
-            return 100_000.0 * 20.5
-
-        print(f"Unable to convert {base} to {quote}", file=sys.stderr)
-        return None
-
-    monkeypatch.setattr(linecalc.linecalc, "convert", fake_convert)
 
 
 @pytest.mark.parametrize("line,expected", DATA_POSITIVE)
@@ -51,3 +29,31 @@ def test_cli_positive_all(mock_convert, capsys, monkeypatch):
     output = captured.out.rstrip()
     # print(captured.err)
     assert output == expected_output
+
+
+@pytest.mark.parametrize("line,exception", DATA_NEGATIVE)
+def test_cli_negative_oneline(mock_convert, capsys, monkeypatch, line, exception):
+    monkeypatch.setattr("sys.stdin", io.StringIO(line))
+    monkeypatch.setattr("sys.argv", ["linecalc"])
+    # monkeypatch.setattr("sys.argv", ["linecalc", "-d"])
+    main()
+    captured = capsys.readouterr()
+    error = captured.err.rstrip()
+    assert error.startswith(exception.__name__)
+
+
+def test_cli_negative_all(mock_convert, capsys, monkeypatch):
+    long_input = "\n".join(map(lambda x: x[0], DATA_NEGATIVE))
+    expected_errors = list(map(lambda x: x[1].__name__, DATA_NEGATIVE))
+    monkeypatch.setattr("sys.stdin", io.StringIO(long_input))
+    monkeypatch.setattr("sys.argv", ["linecalc"])
+    # monkeypatch.setattr("sys.argv", ["linecalc", "-d"])
+    main()
+    captured = capsys.readouterr()
+    errors = captured.err.split("\n")
+    if len(errors[-1]) == 0:
+        # last line is empty
+        del errors[-1]
+    assert len(expected_errors) == len(errors)
+    for i in range(len(expected_errors)):
+        assert errors[i].startswith(expected_errors[i])

@@ -1,3 +1,6 @@
+from linecalc.linecalc import ConvertError, ParseError
+
+
 DATA_POSITIVE = [
     ("2+2*2", 6.0),
     ("10 usd", 205.0),
@@ -11,4 +14,17 @@ DATA_POSITIVE = [
     ("1 btc to czk", 100_000.0 * 20.5),
     ("1 btc to usd", 100_000.0),
     ("1 btc to eur", 100_000.0 / 24.5 * 20.5),
+]
+
+DATA_NEGATIVE = [
+    ("usd", ParseError),
+    ("1 rincewind", ConvertError),
+    ("+", ParseError),
+    ("1+", ParseError),
+    ("+1", ParseError),
+    ("(", ParseError),
+    (")", ParseError),
+    ("()", ParseError),
+    ("(1)(2)", ParseError),
+    ("to czk to czk", ParseError),
 ]

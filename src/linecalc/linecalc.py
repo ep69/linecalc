@@ -27,8 +27,13 @@ def convert(base="usd", quote="czk"):
     if CONVERT_DATA is None:
         _convert_fetch_data()
     # ic(data)
-    result = CONVERT_DATA.get(quote)
-    result /= CONVERT_DATA.get(base)
+    conv_quote = CONVERT_DATA.get(quote, None)
+    if conv_quote is None:
+        raise ConvertError(f"cannot convert quote currency '{quote}'")
+    conv_base = CONVERT_DATA.get(base, None)
+    if conv_base is None:
+        raise ConvertError(f"cannot convert base currency '{base}'")
+    result = conv_quote / conv_base
     ic(result)
     return result
 
@@ -118,6 +123,8 @@ def stack_eval_range(stack, start, end):
 def f_conv(stack, m):
     ic("f_conv", m.group())
     i = stack_rindex_notnone(stack)
+    if i is None:
+        raise ParseError("nothing to convert")
     val = stack[i]
     unit = m.group()
     stack[i] = val * convert(unit)
@@ -163,6 +170,8 @@ def stack_rindex_notnone(stack):
 
 def f_right_par(stack, m):
     lefti = stack_rindex(stack, "(")
+    if lefti is None:
+        raise ParseError("Unmatched right parenthesis")
     stack_eval_range(stack, lefti + 1, len(stack))
     stack[lefti] = None
 
@@ -178,23 +187,18 @@ class FinalUnit:
 def f_final_unit(stack, m):
     unit = m.group(1)
     stack.append(FinalUnit(convert(unit)))
-    if False:
-        stack_eval_range(stack, 0, len(stack))
-        i = stack_rindex_notnone(stack)
-        val = stack[i]
-        stack[i] = val / convert(unit)
 
 
-RE_TOKENS = [
+TOKENS = [
     # 'x' can be used instead of '*'
-    ("re_op", f_op, re.compile(r"[\+\-\*/^]|(x(?![a-zA-Z]))")),
+    ("tok_op", f_op, re.compile(r"[\+\-\*/^]|(x(?![a-zA-Z]))")),
     # whole line can be ended with a unit for final conversion - 'to usd'
-    ("re_final_unit", f_final_unit, re.compile(r"to\s+([a-zA-Z]+)\s*")),
-    ("re_conv", f_conv, re.compile(r"([a-zA-Z]+)")),
-    ("re_space", f_space, re.compile(r" +")),
-    ("re_num", f_num, re.compile(r"[0-9]+(\.[0-9]+)?")),
-    ("re_left_par", f_left_par, re.compile(r"\(")),
-    ("re_right_par", f_right_par, re.compile(r"\)")),
+    ("tok_final_unit", f_final_unit, re.compile(r"to\s+([a-zA-Z]+)\s*")),
+    ("tok_conv", f_conv, re.compile(r"([a-zA-Z]+)")),
+    ("tok_space", f_space, re.compile(r" +")),
+    ("tok_num", f_num, re.compile(r"[0-9]+(\.[0-9]+)?")),
+    ("tok_left_par", f_left_par, re.compile(r"\(")),
+    ("tok_right_par", f_right_par, re.compile(r"\)")),
 ]
 
 
@@ -207,24 +211,34 @@ OP_PRIO = {
 }
 
 
+class ParseError(Exception):
+    pass
+
+
+class ConvertError(Exception):
+    pass
+
+
 def handle_line(line):
     index = 0
     stack = []
     while True:
         m = None
         ic(index, line[index:])
-        for name, fun, r in RE_TOKENS:
+        token = None
+        for name, fun, r in TOKENS:
             m = r.match(line[index:])
             if m:
                 ic("token", name, m.group())
+                token = name
+                index += m.end()
                 fun(stack, m)
                 break
-        ic(m)
-        if not m:
+        ic(token)
+        if token in (None, "tok_final_unit"):
             break
-        index += m.end()
     if len(line[index:]) > 0:
-        print(f'Warning: part of line not parsed: "{line[index:]}"')
+        raise ParseError(f"Part of line not parsed: '{line[index:]}'")
 
     ic("stack before final processing:", stack)
     final_unit = 1.0
@@ -238,7 +252,12 @@ def handle_line(line):
     ic("final stack:", stack)
 
     vals = list(filter(lambda x: x is not None, stack))
-    assert len(vals) == 1
+    if len(vals) != 1:
+        raise ParseError("More 1 value after interpretation")
+    vals = list(filter(lambda x: isinstance(x, float), vals))
+    ic(vals)
+    if len(vals) != 1:
+        raise ParseError("No number after interpretation")
     ic("filtered stack", vals)
     val = vals[0] / final_unit
     ic(val)
@@ -266,12 +285,20 @@ def main():
     line = " ".join(a)
     ic(line)
 
+    def handle_line_ui(line):
+        try:
+            val = handle_line(line)
+            # final number - TADAAA
+            ic(val)
+            print(f"{val:.2f}")
+        except (ParseError, ConvertError) as e:
+            print(f"{type(e).__name__}: {e}", file=sys.stderr)
+
     if line:  # specified as arguments
-        val = handle_line(line)
-        # final number - TADAAA
-        ic(val)
-        print(f"{val:.2f}")
+        ic("line specified as argument")
+        handle_line_ui(line)
     else:  # read indefinitely from stdin
+        ic("line will be read in infinite loop")
         while True:
             try:
                 line = input().strip()
@@ -280,9 +307,7 @@ def main():
                 break
             ic(line)
             if line:
-                val = handle_line(line)
-                ic(val)
-                print(f"{val:.2f}")
+                handle_line_ui(line)
             else:
                 break
 
