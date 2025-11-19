@@ -1,13 +1,17 @@
-name: Publish linecalc
+name: Build, test, and publish
 on: [push]
 jobs:
-  pypi-publish:
-    name: upload release to PyPI
+  ci:
+    name: Check, build and test
     runs-on: ubuntu-latest
-    environment: pypi
+    environment: ci
     permissions:
       # IMPORTANT: this permission is mandatory for Trusted Publishing
       id-token: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      decision_stage: ${{ steps.stage.outputs.decision_stage }}
+      decision_prod: ${{ steps.prod.outputs.decision_prod }}
     steps:
       - uses: actions/checkout@v5
 
@@ -31,7 +35,63 @@ jobs:
       - name: Build with uv
         run: uv build
 
+      - name: pytest
+        run: uv run pytest
+
+      - id: version
+        run: echo "version=$(uv version --short)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to stage decision
+        id: stage
+        run: echo "decision_stage=$(uv version --short |grep -qE '^[0-9]+\.[0-9]+\.[0-9]+((b|rc)[0-9]+)?$' && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to prod decision
+        id: prod
+        run: echo "decision_prod=$(uv version --short |grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$' && echo 1 || echo 0)" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-stage:
+    name: "Publish to test PyPI"
+    runs-on: ubuntu-latest
+    needs: ci
+    environment: stage
+    if: ${{ needs.ci.outputs.decision_stage == 1 }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
       - name: Publish package distributions to Test PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          verbose: true
+          print-hash: true
+
+  publish-production:
+    name: "Publish to regular PyPI"
+    runs-on: ubuntu-latest
+    needs: ci
+    environment: production
+    if: ${{ github.ref == 'refs/heads/main' && needs.ci.outputs.decision_prod == 1 }}
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish package distributions to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          verbose: true
+          print-hash: true
+
