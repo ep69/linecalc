@@ -28,6 +28,9 @@ jobs:
       - name: Ruff check
         run: uv run ruff check --diff
 
+      - name: Run pytest
+        run: uv run pytest
+
       - name: Build with uv
         run: uv build
 
