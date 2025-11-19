@@ -22,7 +22,7 @@ def mock_convert(monkeypatch):
         print(f"Unable to convert {base} to {quote}", file=sys.stderr)
         return None
 
-    monkeypatch.setattr(linecalc, "convert", fake_convert)
+    monkeypatch.setattr(linecalc.linecalc, "convert", fake_convert)
 
 
 @pytest.mark.parametrize(
