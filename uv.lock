@@ -114,7 +114,7 @@ wheels = [
 
 [[package]]
 name = "linecalc"
-version = "0.1.2a1"
+version = "0.1.2"
 source = { editable = "." }
 dependencies = [
     { name = "icecream" },
