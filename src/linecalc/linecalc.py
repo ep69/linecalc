@@ -233,6 +233,7 @@ def handle_line(line):
         final_unit = last_item.val
         del stack[len(stack) - 1]
 
+    ic(final_unit)
     stack_eval_range(stack, 0, len(stack))
     ic("final stack:", stack)
 
@@ -240,6 +241,7 @@ def handle_line(line):
     assert len(vals) == 1
     ic("filtered stack", vals)
     val = vals[0] / final_unit
+    ic(val)
 
     return val
 
@@ -267,6 +269,7 @@ def main():
     if line:  # specified as arguments
         val = handle_line(line)
         # final number - TADAAA
+        ic(val)
         print(f"{val:.2f}")
     else:  # read indefinitely from stdin
         while True:
@@ -278,6 +281,7 @@ def main():
             ic(line)
             if line:
                 val = handle_line(line)
+                ic(val)
                 print(f"{val:.2f}")
             else:
                 break

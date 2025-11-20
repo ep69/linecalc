@@ -1,6 +1,8 @@
 import pytest
 import sys
 
+from .data import DATA_POSITIVE
+
 import linecalc
 from linecalc import handle_line
 
@@ -25,22 +27,6 @@ def mock_convert(monkeypatch):
     monkeypatch.setattr(linecalc.linecalc, "convert", fake_convert)
 
 
-@pytest.mark.parametrize(
-    "line,expected",
-    [
-        ("2+2*2", 6.0),
-        ("10 usd", 205.0),
-        ("10 usd to czk", 205.0),
-        ("10 eur", 245.0),
-        ("10 eur to czk", 245.0),
-        ("10 pln", 57.0),
-        ("10 pln to czk", 57.0),
-        ("1 eur to usd", 245.0 / 205.0),
-        ("1 btc", 100_000.0 * 20.5),
-        ("1 btc to czk", 100_000.0 * 20.5),
-        ("1 btc to usd", 100_000.0),
-        ("1 btc to eur", 100_000.0 / 24.5 * 20.5),
-    ],
-)
+@pytest.mark.parametrize("line,expected", DATA_POSITIVE)
 def test_line(mock_convert, line, expected):
     assert handle_line(line) == pytest.approx(expected)
