@@ -4,6 +4,7 @@ import sys
 import re
 import os
 import readline  # noqa: F401
+import importlib.metadata
 import requests
 from icecream import ic
 
@@ -244,7 +245,11 @@ def handle_line(line):
 
 
 def main():
-    if len(sys.argv) > 2 and sys.argv[1] == "-d":
+    if len(sys.argv) >= 2 and (sys.argv[1] == "-v" or sys.argv[1] == "--version"):
+        print(f"Version: {importlib.metadata.version('linecalc')}")
+        return 0
+
+    if len(sys.argv) >= 2 and sys.argv[1] == "-d":
         ic.enable()
         del sys.argv[1]
 
