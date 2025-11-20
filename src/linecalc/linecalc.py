@@ -3,6 +3,7 @@
 import sys
 import re
 import os
+import readline  # noqa: F401
 import requests
 from icecream import ic
 
@@ -264,7 +265,11 @@ def main():
         print(f"{val:.2f}")
     else:  # read indefinitely from stdin
         while True:
-            line = sys.stdin.readline().strip()
+            try:
+                line = input().strip()
+            except EOFError:
+                ic("input: EOFError")
+                break
             ic(line)
             if line:
                 val = handle_line(line)
