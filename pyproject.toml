@@ -6,12 +6,12 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "icecream>=2.1.8",
-    "pytest>=9.0.1",
     "requests>=2.32.5",
 ]
 
 [dependency-groups]
 dev = [
+    "pytest>=9.0.1",
     "ruff>=0.14.2",
 ]
 
