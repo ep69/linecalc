@@ -149,7 +149,7 @@ def f_op(stack, m):
 
 
 def f_num(stack, m):
-    stack.append(float(m.group()))
+    stack.append(float(m.group().replace(",", "")))
 
 
 def f_left_par(stack, m):
@@ -202,7 +202,7 @@ TOKENS = [
     ("tok_final_unit", f_final_unit, re.compile(r"to\s+([a-zA-Z]+)\s*")),
     ("tok_conv", f_conv, re.compile(r"([a-zA-Z]+)")),
     ("tok_space", f_space, re.compile(r" +")),
-    ("tok_num", f_num, re.compile(r"[0-9]+(\.[0-9]+)?")),
+    ("tok_num", f_num, re.compile(r"[0-9,]+(\.[0-9]+)?")),
     ("tok_left_par", f_left_par, re.compile(r"\(")),
     ("tok_right_par", f_right_par, re.compile(r"\)")),
 ]
@@ -271,6 +271,13 @@ def handle_line(line):
     return val
 
 
+def human_str(val):
+    if abs(val) > 0.01:
+        return f"{val:,.2f}"
+    else:
+        return f"{val:.2g}"
+
+
 def main():
     if len(sys.argv) >= 2 and (sys.argv[1] == "-v" or sys.argv[1] == "--version"):
         print(f"Version: {importlib.metadata.version('linecalc')}")
@@ -296,7 +303,7 @@ def main():
             val = handle_line(line)
             # final number - TADAAA
             ic(val)
-            print(f"{val:.2f}")
+            print(human_str(val))
         except (ParseError, ConvertError) as e:
             print(f"{type(e).__name__}: {e}", file=sys.stderr)
 
