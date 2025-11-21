@@ -15,6 +15,8 @@ def mock_convert(monkeypatch):
             return 5.7
         elif base == "btc" and quote == "czk":
             return 100_000.0 * 20.5
+        elif base == "sat" and quote == "czk":
+            return 1e-8 * 100_000.0 * 20.5
 
         raise linecalc.linecalc.ConvertError("mock convert")
 
