@@ -26,6 +26,10 @@ def convert(base="usd", quote="czk"):
     ic("convert", base, quote)
     if CONVERT_DATA is None:
         _convert_fetch_data()
+    multiplier = 1.0
+    if base.lower() == "sat":
+        base = "btc"
+        multiplier = 1e-8
     # ic(data)
     conv_quote = CONVERT_DATA.get(quote, None)
     if conv_quote is None:
@@ -35,6 +39,8 @@ def convert(base="usd", quote="czk"):
         raise ConvertError(f"cannot convert base currency '{base}'")
     result = conv_quote / conv_base
     ic(result)
+    result *= multiplier
+    ic("adjusted result")
     return result
 
 
