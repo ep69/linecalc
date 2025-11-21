@@ -4,6 +4,7 @@ import io
 from .shared import DATA_POSITIVE, DATA_NEGATIVE
 
 from linecalc import main
+from linecalc.linecalc import human_str
 
 
 @pytest.mark.parametrize("line,expected", DATA_POSITIVE)
@@ -15,12 +16,12 @@ def test_cli_positive_oneline(mock_convert, capsys, monkeypatch, line, expected)
     captured = capsys.readouterr()
     output = captured.out.rstrip()
     # print(captured.err)
-    assert output == f"{expected:.2f}"
+    assert output == human_str(expected)
 
 
 def test_cli_positive_all(mock_convert, capsys, monkeypatch):
     long_input = "\n".join(map(lambda x: x[0], DATA_POSITIVE))
-    expected_output = "\n".join(map(lambda x: f"{x[1]:.2f}", DATA_POSITIVE))
+    expected_output = "\n".join(map(lambda x: human_str(x[1]), DATA_POSITIVE))
     monkeypatch.setattr("sys.stdin", io.StringIO(long_input))
     monkeypatch.setattr("sys.argv", ["linecalc"])
     # monkeypatch.setattr("sys.argv", ["linecalc", "-d"])
@@ -57,3 +58,23 @@ def test_cli_negative_all(mock_convert, capsys, monkeypatch):
     assert len(expected_errors) == len(errors)
     for i in range(len(expected_errors)):
         assert errors[i].startswith(expected_errors[i])
+
+
+def test_cli_pipe(mock_convert, capsys, monkeypatch):
+    line = "40000 + 2000"
+    expected = 42000
+    monkeypatch.setattr("sys.stdin", io.StringIO(line))
+    monkeypatch.setattr("sys.argv", ["linecalc"])
+    # monkeypatch.setattr("sys.argv", ["linecalc", "-d"])
+    main()
+    captured = capsys.readouterr()
+    output1 = captured.out.rstrip()
+    # print(captured.err)
+    monkeypatch.setattr("sys.stdin", io.StringIO(output1))
+    monkeypatch.setattr("sys.argv", ["linecalc"])
+    # monkeypatch.setattr("sys.argv", ["linecalc", "-d"])
+    main()
+    captured = capsys.readouterr()
+    output2 = captured.out.rstrip()
+    # print(captured.err)
+    assert output2 == human_str(expected)
