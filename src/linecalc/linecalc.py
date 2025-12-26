@@ -315,7 +315,7 @@ def main():
         while True:
             try:
                 line = input().strip()
-            except EOFError:
+            except (EOFError, KeyboardInterrupt):
                 ic("input: EOFError")
                 break
             ic(line)
