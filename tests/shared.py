@@ -12,8 +12,10 @@ DATA_POSITIVE = [
     ("1 eur to usd", 24.5 / 20.5),
     ("1 btc", 100_000.0 * 20.5),
     ("1 btc to czk", 100_000.0 * 20.5),
+    ("1 btc to sat", 100_000_000.0),
     ("1 btc to usd", 100_000.0),
     ("1 btc to eur", 100_000.0 / 24.5 * 20.5),
+    ("1 sat to btc", 1e-8),
 ]
 
 DATA_NEGATIVE = [
